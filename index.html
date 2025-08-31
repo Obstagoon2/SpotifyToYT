@@ -314,6 +314,22 @@ async function addVideoToPlaylist(playlistId, videoId){
   if(j.error){ log('Add video error', JSON.stringify(j)); return null; }
   return j;
 }
+async function searchYouTubeVideo(query, accessToken) {
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("YouTube API Error:", res.status, err);
+    throw new Error(`YouTube search failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.items || [];
+}
+
 
 /* --- UI rendering for preview list --- */
 function createTrackItem(idx, track){
