@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html>
+<head>
+  <meta charset="utf-8">
+  <title>OAuth Callback</title>
+</head>
 <body>
 <script>
 (async () => {
   const params = new URLSearchParams(window.location.search);
 
-  // For Spotify PKCE flow
+  // Spotify sends ?code=... here
   if(params.get("code")){
     localStorage.setItem("spotify_auth_code", params.get("code"));
   }
 
-  // For Google implicit flow
+  // Google sends #access_token=... in hash
   if(window.location.hash.startsWith("#")){
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     if(hashParams.get("access_token")){
@@ -22,11 +26,11 @@
     }
   }
 
-  // Close popup or redirect back
+  // Close popup if opened, otherwise redirect home
   if(window.opener){
     window.close();
   } else {
-    window.location = "/";
+    window.location = "./index.html";
   }
 })();
 </script>
