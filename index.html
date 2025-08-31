@@ -3,62 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Spotify → YouTube Playlist Converter</title>
+  <title>Spotify → YouTube Playlist Converter (Preview)</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Minimal inline styling so the page looks coherent if styles.css missing */
-    :root{--green:#1DB954;--red:#e05a5a;--bg:#0f1113;--card:#111318;--muted:#9aa0a6}
-    body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:#e6eef3;margin:0;padding:28px}
-    .container{max-width:980px;margin:0 auto}
-    .header{display:flex;align-items:center;gap:16px}
-    .logo{width:56px;height:56px;border-radius:8px}
-    h1{margin:0;color:var(--green)}
-    .sub{color:var(--muted);margin-top:6px}
-    .card{background:var(--card);padding:14px;border-radius:10px;margin-top:16px;box-shadow:0 6px 18px rgba(0,0,0,0.6)}
-    .row{display:flex;gap:8px;align-items:center}
-    input[type="text"]{flex:1;padding:8px;border-radius:8px;border:1px solid #222;background:#0b0b0c;color:#fff}
-    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
-    .btn-green{background:var(--green);color:#04130a}
-    .btn-red{background:var(--red);color:#fff}
-    .small{font-size:12px;color:var(--muted);margin-top:8px}
-    .tracks{list-style:none;padding:0;margin:12px 0;max-height:520px;overflow:auto}
-    .track{display:flex;justify-content:space-between;gap:12px;padding:10px;border-radius:8px;border:1px solid #1b1c1f;margin-bottom:8px}
-    .track-left{flex:1}
-    .track-title{font-weight:600}
-    .track-album{font-size:13px;color:var(--muted)}
-    .searchResults{display:flex;gap:8px;margin-left:12px}
-    .candidate{width:180px;background:#0e1012;padding:8px;border-radius:8px;cursor:pointer;border:1px solid transparent}
-    .candidate.selected{border-color:var(--green)}
-    .candidate img{width:100%;height:100px;object-fit:cover;border-radius:6px}
-    .resMeta{font-size:12px;margin-top:6px;color:var(--muted)}
-    .actions{display:flex;gap:6px}
-    .btn-small{padding:6px 8px;font-size:13px}
-    .hidden{display:none}
-    .progressWrap{display:flex;align-items:center;gap:12px}
-    .progressBar{background:#111;height:12px;border-radius:999px;flex:1;overflow:hidden}
-    #progressFill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),#59d37a)}
-    pre.log{white-space:pre-wrap;max-height:200px;overflow:auto;color:#c7d3d8;background:#0b0c0d;padding:8px;border-radius:6px}
-    .meta{font-size:13px;color:var(--muted)}
-  </style>
 </head>
 <body>
   <main class="container">
     <header class="header">
-      <img src="icons/spotify-music-2015-07-30.webp" alt="Spotify" class="logo">
-      <div>
+      <div class="brand">
+        <img src="icons/spotify-music-2015-07-30.webp" alt="Spotify" class="logo">
         <h1>Spotify → YouTube Converter</h1>
-        <div class="sub">Preview matches and choose which videos to add to your YouTube playlist</div>
       </div>
+      <div class="sub">Preview matches and choose which videos to add to your YouTube playlist</div>
     </header>
 
     <section class="controls card">
-      <label for="spotifyUrl">Spotify playlist URL or URI</label>
-      <div class="row" style="margin-top:8px">
+      <label>Spotify playlist URL or URI</label>
+      <div class="row">
         <input id="spotifyUrl" type="text" placeholder="https://open.spotify.com/playlist/..." />
         <button id="start" class="btn btn-green">Load & Search</button>
         <button id="logout" class="btn btn-red">Clear Tokens</button>
       </div>
-      <div class="small">You will be redirected to Spotify to authorize (PKCE). Google permissions open in a popup for YouTube actions.</div>
+      <div class="small">You will be redirected to Spotify for authorization (PKCE) and a Google popup will be used for YouTube permissions.</div>
     </section>
 
     <section id="playlistInfo" class="card hidden">
@@ -67,14 +32,12 @@
     </section>
 
     <section id="previewArea" class="card hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="display:flex;gap:8px">
-          <button id="autoAccept" class="btn">Accept All Matches</button>
-          <button id="acceptSelected" class="btn btn-green">Add Selected To YouTube</button>
-          <button id="searchMore" class="btn">Refine Search</button>
-        </div>
-        <div class="progressWrap" style="width:44%">
-          <label style="font-size:13px;color:var(--muted)">Progress</label>
+      <div class="controls-row">
+        <button id="autoAccept" class="btn">Accept All Matches</button>
+        <button id="acceptSelected" class="btn btn-green">Add Selected To YouTube</button>
+        <button id="searchMore" class="btn">Refine Search</button>
+        <div class="progressWrap">
+          <label>Progress</label>
           <div class="progressBar" id="progressBar"><div id="progressFill"></div></div>
         </div>
       </div>
@@ -88,31 +51,49 @@
     </section>
 
     <footer class="footer card">
-      <div>Replace <code>YT_API_KEY</code> (optional) and confirm OAuth client IDs. Register redirect URI exactly: <code>https://obstagoon2.github.io/SpotifyToYT/callback.html</code></div>
+      <div>Replace <code>CLIENT_ID_SPOTIFY</code> and <code>CLIENT_ID_GOOGLE</code> in <code>index.html</code> with your own Client IDs. Register the redirect URI exactly.</div>
     </footer>
   </main>
 
 <script>
-/* ================== CONFIG (fill in keys) ================== */
+  /* --- OAuth callback handling --- */
+(function(){
+  const raw = localStorage.getItem("oauth_data");
+  if(raw){
+    try {
+      const oauth = JSON.parse(raw);
+      console.log("OAuth data from callback:", oauth);
+
+      if(oauth.access_token && oauth.scope && oauth.scope.includes("youtube")) {
+        // Google implicit flow
+        saveKV("google_access_token", oauth.access_token);
+        const exp = Date.now() + (parseInt(oauth.expires_in||0)*1000);
+        saveKV("google_token_expiry", exp+"");
+      }
+      if(oauth.code && oauth.state) {
+        // Spotify PKCE code redirect — will be exchanged in handleSpotifyRedirect()
+        // Nothing to do here, just let handleSpotifyRedirect() pick it up.
+      }
+    } catch(e){ console.error("OAuth parse failed", e); }
+    localStorage.removeItem("oauth_data");
+  }
+})();
+
+/* --- CONFIG (replace client ids) --- */
 const SPOTIFY_CLIENT_ID = '54d05b42f861463bbde7c32323f79ed7';
 const GOOGLE_CLIENT_ID  = '886071212644-eusp493ftsk4id76kto65jmc7lfcgi0d.apps.googleusercontent.com';
 const REDIRECT_URI = window.location.origin + '/SpotifyToYT/callback.html';
 const SPOTIFY_SCOPES = ['playlist-read-private','playlist-read-collaborative'];
 const GOOGLE_SCOPES = ['https://www.googleapis.com/auth/youtube'];
-const YT_API_KEY = 'YOUR_YOUTUBE_API_KEY'; // optional: useful for search if you prefer API-key mode
-/* ========================================================== */
 
-/* ------------- tiny UI helpers ------------- */
+/* --- UI helpers --- */
 const logEl = document.getElementById('log');
-function log(...a){ logEl.textContent += a.join(' ') + '\n'; logEl.scrollTop = logEl.scrollHeight; }
+function log(...a){ logEl.textContent += a.join(' ') + '\\n'; logEl.scrollTop = logEl.scrollHeight; }
 function clearLog(){ logEl.textContent = ''; }
 function show(id){ document.getElementById(id).classList.remove('hidden'); }
 function hide(id){ document.getElementById(id).classList.add('hidden'); }
-function saveKV(k,v){ localStorage.setItem(k,v); }
-function getKV(k){ return localStorage.getItem(k); }
-function delKV(k){ localStorage.removeItem(k); }
 
-/* ------------- PKCE helpers ------------- */
+/* --- PKCE helpers for Spotify --- */
 function dec2hex(dec){ return ('0' + dec.toString(16)).substr(-2); }
 function generateCodeVerifier() {
   const array = new Uint8Array(56);
@@ -124,53 +105,74 @@ async function sha256(plain) {
   const data = encoder.encode(plain);
   const digest = await crypto.subtle.digest('SHA-256', data);
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
+
 function qs(obj){ return Object.entries(obj).map(([k,v])=> encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&'); }
+function saveKV(k,v){ localStorage.setItem(k,v); }
+function getKV(k){ return localStorage.getItem(k); }
+function delKV(k){ localStorage.removeItem(k); }
 
-/* ------------- Spotify auth (PKCE) ------------- */
-async function spotifyAuth(){ 
-  // if token present and not expired, return it
-  let token = getKV('spotify_access_token');
-  const exp = parseInt(getKV('spotify_token_expiry')||'0',10);
-  if(token && Date.now() < exp) return token;
+/* --- Auth flows --- */
+async function spotifyAuth() {
+  // If we already have an access token and it's not expired, return it
+  let token = getKV("spotify_access_token");
+  const expiry = parseInt(getKV("spotify_token_expiry")||"0");
+  if(token && Date.now() < expiry){ return token; }
 
-  // begin PKCE
-  const verifier = generateCodeVerifier();
-  saveKV('spotify_code_verifier', verifier);
-  const challenge = await sha256(verifier);
-  const state = Math.random().toString(36).slice(2);
-  saveKV('spotify_auth_state', state);
+  // If we came back with an auth code in localStorage, exchange it
+  const code = localStorage.getItem("spotify_auth_code");
+  if(code){
+    localStorage.removeItem("spotify_auth_code");
+    const body = new URLSearchParams({
+      client_id: SPOTIFY_CLIENT_ID,
+      grant_type: "authorization_code",
+      code: code,
+      redirect_uri: window.location.origin + "/SpotifyToYT/callback.html",
+      code_verifier: getKV("spotify_code_verifier")
+    });
+    const resp = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: {"Content-Type":"application/x-www-form-urlencoded"},
+      body
+    });
+    const data = await resp.json();
+    if(data.access_token){
+      saveKV("spotify_access_token", data.access_token);
+      saveKV("spotify_token_expiry", (Date.now()+data.expires_in*1000)+"");
+      return data.access_token;
+    }
+  }
 
-  const params = {
+ // Otherwise start auth flow
+const verifier = generateCodeVerifier();
+const challenge = await sha256(verifier);
+saveKV("spotify_code_verifier", verifier);
+
+  const params = new URLSearchParams({
+    response_type: "code",
     client_id: SPOTIFY_CLIENT_ID,
-    response_type: 'code',
-    redirect_uri: REDIRECT_URI,
-    code_challenge_method: 'S256',
-    code_challenge: challenge,
-    state,
-    scope: SPOTIFY_SCOPES.join(' ')
-  };
-  window.location.href = 'https://accounts.spotify.com/authorize?' + qs(params);
+    scope: SPOTIFY_SCOPES.join(" "),
+    redirect_uri: window.location.origin + "/SpotifyToYT/callback.html",
+    code_challenge_method: "S256",
+    code_challenge: challenge
+  });
+  window.location = "https://accounts.spotify.com/authorize?" + params;
 }
 
-/* Handles exchange when user returns to /callback.html -> index.html */
 async function handleSpotifyRedirect(){
-  // Look for code param in URL (this runs on index load)
   const url = new URL(window.location.href);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
-  if(error){ log('Spotify auth error: ' + error); return null; }
+  if(error){ log('Spotify auth error:', error); return null; }
   if(!code) return null;
-
-  // Replace browser URL to clean page
-  history.replaceState({}, '', window.location.pathname);
-
+  history.replaceState({}, '', REDIRECT_URI);
   const verifier = getKV('spotify_code_verifier');
   if(!verifier){ log('Missing PKCE verifier'); return null; }
-
-  // Exchange code for token
+  // exchange code
   const body = {
     client_id: SPOTIFY_CLIENT_ID,
     grant_type: 'authorization_code',
@@ -179,36 +181,18 @@ async function handleSpotifyRedirect(){
     code_verifier: verifier
   };
   const form = qs(body);
-  log('Exchanging Spotify code for token...');
+  log('Exchanging Spotify code...');
   const resp = await fetch('https://accounts.spotify.com/api/token', {
     method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form
   });
   const json = await resp.json();
-  if(json.error){ log('Spotify token error: ' + JSON.stringify(json)); return null; }
-  const expiry = Date.now() + (json.expires_in*1000) - 2000;
-  saveKV('spotify_access_token', json.access_token); saveKV('spotify_token_expiry',''+expiry);
+  if(json.error){ log('Spotify token error', JSON.stringify(json)); return null; }
+  const exp = Date.now() + (json.expires_in*1000) - 2000;
+  saveKV('spotify_access_token', json.access_token); saveKV('spotify_token_expiry',''+exp);
   if(json.refresh_token) saveKV('spotify_refresh_token', json.refresh_token);
   log('Spotify authenticated.');
   return json.access_token;
 }
-
-/* ------------- Spotify playlist fetching ------------- */
-async function fetchSpotifyPlaylist(playlistId){
-  let token = getKV('spotify_access_token');
-  if(!token){ token = await spotifyRefresh(); if(!token) return null; }
-  const tracks = []; let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
-  while(url){
-    const r = await fetch(url, {headers:{Authorization:'Bearer '+token}});
-    if(r.status === 401){ token = await spotifyRefresh(); if(!token) return null; continue; }
-    const j = await r.json();
-    if(j.error){ log('Spotify API error: ' + JSON.stringify(j)); return null; }
-    j.items.forEach(it=>{ const t=it.track; if(t && t.name) tracks.push({name:t.name, artists:t.artists.map(a=>a.name).join(', '), album:t.album && t.album.name}); });
-    url = j.next;
-  }
-  return tracks;
-}
-
-/* refresh token (if Spotify provided it) */
 async function spotifyRefresh(){
   const refresh_token = getKV('spotify_refresh_token');
   if(!refresh_token) return null;
@@ -220,71 +204,28 @@ async function spotifyRefresh(){
   return null;
 }
 
-/* ------------- YouTube search (returns array of candidates) ------------- */
-async function searchYouTubeCandidates(accessToken, query, maxResults=3){
-  // If we have OAuth access token, prefer it. Otherwise use API key if provided.
-  const q = encodeURIComponent(query);
-  let url;
-  let headers = {};
-  if(accessToken){
-    url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${maxResults}&q=${q}`;
-    headers = { Authorization: 'Bearer ' + accessToken };
-  } else if(YT_API_KEY && YT_API_KEY !== 'YOUR_YOUTUBE_API_KEY'){
-    url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${maxResults}&q=${q}&key=${YT_API_KEY}`;
-  } else {
-    // No way to search without API key or OAuth token
-    return [];
-  }
-
-  let attempt = 0;
-  while(attempt < 5){
-    const r = await fetch(url, { headers });
-    if(r.status === 200){
-      const j = await r.json();
-      if(!j.items) return [];
-      return j.items.map(it => ({ videoId: it.id.videoId, title: it.snippet.title, channel: it.snippet.channelTitle, thumb: it.snippet.thumbnails && (it.snippet.thumbnails.medium || it.snippet.thumbnails.default).url }));
-    }
-    if(r.status === 429 || r.status >= 500){
-      const delay = Math.pow(2, attempt) * 400 + Math.random()*300;
-      await new Promise(res=>setTimeout(res, delay));
-      attempt++;
-      continue;
-    }
-    const j = await r.json();
-    log('YouTube search error: ' + JSON.stringify(j));
-    return [];
-  }
-  return [];
+function googleAuth() {
+  const state = Math.random().toString(36).slice(2);
+  saveKV('google_oauth_state', state);
+  const params = {
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: window.location.origin + '/SpotifyToYT/callback.html',
+    response_type: 'token',
+    scope: GOOGLE_SCOPES.join(' '),
+    include_granted_scopes: 'true',
+    state,
+    prompt: 'consent'
+  };
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + qs(params);
 }
 
-/* ------------- YouTube playlist create & add (requires OAuth token) ------------- */
-async function createYouTubePlaylist(title, description='Imported from Spotify'){
-  const token = getKV('google_access_token');
-  if(!token){ log('Missing Google access token for playlist creation'); return null; }
-  const body = { snippet: { title, description }, status: { privacyStatus: 'private' } };
-  const r = await fetch('https://www.googleapis.com/youtube/v3/playlists?part=snippet,status', { method:'POST', headers:{ Authorization: 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-  const j = await r.json();
-  if(j.error){ log('YouTube playlist create error: ' + JSON.stringify(j)); return null; }
-  return j;
-}
-async function addVideoToPlaylist(playlistId, videoId){
-  const token = getKV('google_access_token');
-  if(!token){ log('Missing Google access token for add'); return null; }
-  const body = { snippet: { playlistId, resourceId: { kind: 'youtube#video', videoId } } };
-  const r = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', { method:'POST', headers:{ Authorization: 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-  const j = await r.json();
-  if(j.error){ log('Add video error: ' + JSON.stringify(j)); return null; }
-  return j;
-}
-
-/* ------------- Google OAuth popup (implicit) ------------- */
-function googleAuthPopup(){
+async function googleAuthPopup() {
   return new Promise((resolve, reject) => {
     const state = Math.random().toString(36).slice(2);
     saveKV('google_oauth_state', state);
     const params = {
       client_id: GOOGLE_CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: window.location.origin + '/SpotifyToYT/callback.html',
       response_type: 'token',
       scope: GOOGLE_SCOPES.join(' '),
       include_granted_scopes: 'true',
@@ -292,92 +233,152 @@ function googleAuthPopup(){
       prompt: 'consent'
     };
     const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + qs(params);
-    const w = window.open(url, 'google_oauth', 'width=560,height=700');
+    const w = window.open(url, 'google_auth', 'width=500,height=600');
 
-    if(!w) return reject('Popup blocked');
-
-    const poll = setInterval(()=>{
-      try{
-        // If callback.html wrote oauth_data to localStorage
-        const raw = localStorage.getItem('oauth_data');
+    const interval = setInterval(() => {
+      try {
+        const raw = localStorage.getItem("oauth_data");
         if(raw){
           const oauth = JSON.parse(raw);
           if(oauth.access_token){
-            clearInterval(poll);
-            localStorage.removeItem('oauth_data');
-            saveKV('google_access_token', oauth.access_token);
-            saveKV('google_token_expiry', '' + (Date.now() + (parseInt(oauth.expires_in||0)*1000)));
-            try{ w.close(); } catch(e){}
+            clearInterval(interval);
+            localStorage.removeItem("oauth_data");
+            saveKV("google_access_token", oauth.access_token);
+            const exp = Date.now() + (parseInt(oauth.expires_in||0)*1000);
+            saveKV("google_token_expiry", exp+"");
+            w.close();
             resolve(oauth.access_token);
-            return;
           }
         }
-      }catch(e){}
-      if(w.closed){ clearInterval(poll); reject('Popup closed'); }
+      } catch(e){ /* ignore cross-origin errors */ }
+      if(w.closed){ clearInterval(interval); reject('Popup closed'); }
     }, 500);
   });
 }
 
-/* ------------- UI rendering helpers ------------- */
+
+/* --- Spotify playlist fetching (pagination) --- */
+async function fetchSpotifyPlaylist(playlistId){
+  let token = getKV('spotify_access_token');
+  if(!token){ token = await spotifyRefresh(); if(!token) return null; }
+  const tracks = []; let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
+  while(url){
+    const r = await fetch(url, {headers:{Authorization:'Bearer '+token}});
+    if(r.status === 401){ token = await spotifyRefresh(); if(!token) return null; continue; }
+    const j = await r.json();
+    if(j.error){ log('Spotify API error:', JSON.stringify(j)); return null; }
+    j.items.forEach(it=>{ const t=it.track; if(t && t.name) tracks.push({name:t.name, artists:t.artists.map(a=>a.name).join(', '), album:t.album.name}); });
+    url = j.next;
+  }
+  return tracks;
+}
+
+/* --- YouTube API helpers --- */
+async function searchYouTubeVideo(accessToken, query){
+  // search with exponential backoff on 429/5xx
+  const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=' + encodeURIComponent(query);
+  let attempt = 0;
+  while(attempt < 5){
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if(r.status === 200){ const j = await r.json(); const item = j.items && j.items[0]; return item ? {videoId: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle} : null; }
+    if(r.status === 429 || r.status >= 500){ // backoff and retry
+      const delay = Math.pow(2, attempt) * 300 + Math.random()*200;
+      await new Promise(res=>setTimeout(res, delay));
+      attempt++;
+      continue;
+    }
+    const j = await r.json();
+    log('YouTube search error:', JSON.stringify(j));
+    return null;
+  }
+  return null;
+}
+async function createYouTubePlaylist(title, description='Imported from Spotify') {
+  const token = getKV('google_access_token');
+  if(!token) return null;
+  const body = { snippet: { title, description }, status: { privacyStatus: 'private' } };
+  const r = await fetch('https://www.googleapis.com/youtube/v3/playlists?part=snippet,status', { method:'POST', headers:{ Authorization: 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if(j.error){ log('YouTube playlist create error', JSON.stringify(j)); return null; }
+  return j;
+}
+async function addVideoToPlaylist(playlistId, videoId){
+  const token = getKV('google_access_token');
+  if(!token) return null;
+  const body = { snippet: { playlistId, resourceId: { kind: 'youtube#video', videoId } } };
+  const r = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', { method:'POST', headers:{ Authorization: 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if(j.error){ log('Add video error', JSON.stringify(j)); return null; }
+  return j;
+}
+
+/* --- UI rendering for preview list --- */
 function createTrackItem(idx, track){
   const li = document.createElement('li'); li.className = 'track';
   li.dataset.index = idx;
   li.innerHTML = `
     <div class="track-left">
-      <div class="track-title">${idx+1}. ${escapeHtml(track.artists)} — ${escapeHtml(track.name)}</div>
-      <div class="track-album">${escapeHtml(track.album||'')}</div>
+      <div class="track-title">${idx+1}. ${track.artists} — ${track.name}</div>
+      <div class="track-album">${track.album}</div>
     </div>
-    <div style="display:flex;align-items:flex-start">
-      <div class="searchResults" id="results-${idx}"></div>
+    <div class="track-right">
+      <div class="searchResult hidden" id="result-${idx}">
+        <div class="resTitle" id="resTitle-${idx}"></div>
+        <div class="resChannel" id="resChannel-${idx}"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-small btn-accept">Accept</button>
+        <button class="btn btn-small btn-skip">Skip</button>
+        <button class="btn btn-small btn-refine">Refine</button>
+      </div>
     </div>
   `;
+  // event bindings will be done by parent
   return li;
 }
-function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* ------------- Parallel searches with concurrency ------------- */
-async function parallelSearch(tracks, concurrency=6){
-  const access = getKV('google_access_token'); // may be null
+/* --- Parse playlist id --- */
+function parseSpotifyPlaylistId(input){
+  try{
+    if(input.includes('open.spotify.com')){ const u = new URL(input); const parts = u.pathname.split('/'); return parts[parts.length-1].split('?')[0]; }
+    if(input.startsWith('spotify:playlist:')) return input.split(':')[2];
+    return input.trim();
+  }catch(e){ return null; }
+}
+
+/* --- Parallelized search with concurrency and backoff --- */
+async function parallelSearch(tracks, concurrency=5){
+  const access = getKV('google_access_token');
+  if(!access) { log('Missing Google access token for search'); return []; }
   let idx = 0;
   const results = new Array(tracks.length).fill(null);
   const total = tracks.length;
+  const progressFill = document.getElementById('progressFill');
   let completed = 0;
 
   async function worker(){
     while(true){
       const i = idx++; if(i >= tracks.length) break;
       const t = tracks[i];
-      updateProgress(completed/total);
+      updateProgress(++completed/total);
       log(`Searching [${i+1}/${total}] ${t.artists} - ${t.name}`);
       const q = `${t.artists} - ${t.name}`;
-      const candidates = await searchYouTubeCandidates(access, q, 3);
-      results[i] = candidates;
-      // render candidates for this track
-      const container = document.getElementById(`results-${i}`);
-      if(container){
-        container.innerHTML = '';
-        if(candidates && candidates.length){
-          candidates.forEach((c,ci)=>{
-            const div = document.createElement('div');
-            div.className = 'candidate';
-            div.dataset.videoId = c.videoId;
-            div.innerHTML = `<img src="${c.thumb || 'https://via.placeholder.com/320x180'}" alt="">
-              <div style="font-weight:600;margin-top:6px">${escapeHtml(c.title)}</div>
-              <div class="resMeta">${escapeHtml(c.channel)}</div>`;
-            div.onclick = ()=>{
-              // deselect siblings
-              Array.from(container.children).forEach(ch=>ch.classList.remove('selected'));
-              div.classList.add('selected');
-              const li = div.closest('.track');
-              li.dataset.videoId = c.videoId;
-            };
-            container.appendChild(div);
-          });
+      const res = await searchYouTubeVideo(access, q);
+      results[i] = res;
+      // update DOM if exists
+      const resultEl = document.getElementById(`result-${i}`);
+      if(resultEl){
+        if(res){
+          document.getElementById(`resTitle-${i}`).textContent = res.title;
+          document.getElementById(`resChannel-${i}`).textContent = res.channel + ' — https://youtu.be/' + res.videoId;
+          resultEl.classList.remove('hidden');
         } else {
-          container.innerHTML = `<div style="color:var(--muted)">No results</div>`;
+          document.getElementById(`resTitle-${i}`).textContent = 'No good match found';
+          document.getElementById(`resChannel-${i}`).textContent = '';
+          resultEl.classList.remove('hidden');
         }
       }
-      completed++; updateProgress(completed/total);
+      updateProgress(completed/total);
     }
   }
 
@@ -386,43 +387,40 @@ async function parallelSearch(tracks, concurrency=6){
   return results;
 }
 
-/* ------------- UI progress ------------- */
+/* --- Update progress bar UI --- */
 function updateProgress(fraction){
   const fill = document.getElementById('progressFill');
   fill.style.width = (Math.round(fraction*100)) + '%';
 }
 
-/* ------------- Main convert flow ------------- */
+/* --- Main convert flow --- */
 async function convertFlow(){
   clearLog();
+  if(SPOTIFY_CLIENT_ID === 'CLIENT_ID_SPOTIFY' || GOOGLE_CLIENT_ID === 'CLIENT_ID_GOOGLE'){ log('⚠️ Replace CLIENT_ID placeholders in the file.'); return; }
   const raw = document.getElementById('spotifyUrl').value.trim();
   if(!raw){ log('Paste a Spotify playlist URL first.'); return; }
   const playlistId = parseSpotifyPlaylistId(raw);
   if(!playlistId){ log('Could not parse playlist ID'); return; }
-  log('Playlist id: ' + playlistId);
+  log('Playlist id:', playlistId);
 
-  // Ensure spotify token (if not present, spotifyAuth will redirect)
+  // handle possible spotify redirect first
+  await handleSpotifyRedirect();
+
+  // ensure spotify token
   let sToken = getKV('spotify_access_token');
-  if(!sToken){
-    log('Redirecting to Spotify to authorize...');
-    await spotifyAuth();
-    return;
-  }
+  if(!sToken){ log('Redirecting to Spotify to authorize...'); await spotifyAuth(); return; }
 
-  // Ensure Google token via popup (needed for creating playlist & adding)
+  // ensure google token via popup
   let gToken = getKV('google_access_token');
-  if(!gToken){
-    try{
-      log('Requesting Google permission (popup)...');
-      gToken = await googleAuthPopup();
-      log('Google signed in');
-    }catch(e){ log('Google sign-in failed: ' + e); return; }
-  }
+    if(!gToken){
+  log('Requesting Google permission...');
+  gToken = await googleAuthPopup();
+  log('Google authenticated.');
+}
 
-  // Fetch Spotify playlist tracks
   const tracks = await fetchSpotifyPlaylist(playlistId);
   if(!tracks || tracks.length===0){ log('No tracks fetched'); return; }
-  log(`Fetched ${tracks.length} tracks from Spotify`);
+
   document.getElementById('playlistTitle').textContent = `Playlist (${tracks.length} tracks)`;
   show('playlistInfo'); show('previewArea');
 
@@ -430,32 +428,53 @@ async function convertFlow(){
   const ul = document.getElementById('tracksList'); ul.innerHTML = '';
   tracks.forEach((t,i)=>{ const li = createTrackItem(i,t); ul.appendChild(li); });
 
-  // run parallel searches
+  // run parallel searches with concurrency and show results progressively
+  log('Searching YouTube for best matches (parallelized)...');
   updateProgress(0);
-  const allResults = await parallelSearch(tracks, 6);
+  const results = await parallelSearch(tracks, 6); // concurrency 6
   log('Search complete');
 
-  // wire accept/skip/refine controls (auto-accept button)
-  document.getElementById('autoAccept').onclick = ()=> {
-    document.querySelectorAll('.candidate').forEach(c=>{ /* choose first candidate */ });
-    // automatically select first candidate for each track
-    document.querySelectorAll('.searchResults').forEach(container=>{
-      const first = container.querySelector('.candidate');
-      if(first) first.click();
-    });
+  // attach per-item actions
+  document.querySelectorAll('.track').forEach(li=>{
+    const i = parseInt(li.dataset.index,10);
+    const acceptBtn = li.querySelector('.btn-accept');
+    const skipBtn = li.querySelector('.btn-skip');
+    const refineBtn = li.querySelector('.btn-refine');
+    if(results[i]){
+      li.classList.add('hasResult');
+      li.dataset.videoId = results[i].videoId;
+      li.querySelector('#resTitle-'+i).textContent = results[i].title;
+      li.querySelector('#resChannel-'+i).textContent = results[i].channel + ' — https://youtu.be/' + results[i].videoId;
+      li.querySelector('#result-'+i).classList.remove('hidden');
+    } else {
+      li.classList.add('noResult');
+      li.dataset.videoId = '';
+    }
+    acceptBtn.onclick = ()=>{ li.classList.add('accepted'); li.classList.remove('skipped'); };
+    skipBtn.onclick = ()=>{ li.classList.add('skipped'); li.classList.remove('accepted'); };
+    refineBtn.onclick = async ()=>{
+      const query = prompt('Refine search query', `${tracks[i].artists} - ${tracks[i].name}`);
+      if(!query) return;
+      log('Refined search for', query);
+      const res = await searchYouTubeVideo(getKV('google_access_token'), query);
+      if(res){ li.dataset.videoId = res.videoId; li.querySelector('#resTitle-'+i).textContent = res.title; li.querySelector('#resChannel-'+i).textContent = res.channel + ' — https://youtu.be/' + res.videoId; li.classList.add('hasResult'); li.classList.remove('noResult'); }
+      else { li.dataset.videoId = ''; li.querySelector('#resTitle-'+i).textContent = 'No result'; li.querySelector('#resChannel-'+i).textContent = ''; li.classList.add('noResult'); }
+    };
+  });
+
+  // auto accept button
+  document.getElementById('autoAccept').onclick = ()=>{
+    document.querySelectorAll('.track').forEach(li=>{ if(li.dataset.videoId) { li.classList.add('accepted'); li.classList.remove('skipped'); } });
   };
 
+  // accept selected -> create playlist and add videos
   document.getElementById('acceptSelected').onclick = async ()=>{
-    // collect accepted choices
-    const accepted = Array.from(document.querySelectorAll('.track')).map(li=>{
-      return { index: li.dataset.index, videoId: li.dataset.videoId, title: li.querySelector('.track-title').textContent };
-    }).filter(x => x.videoId);
-    if(accepted.length === 0){ alert('No tracks selected.'); return; }
-
+    const accepted = Array.from(document.querySelectorAll('.track.accepted')).map(li=>({index: li.dataset.index, videoId: li.dataset.videoId, title: li.querySelector('.track-title').textContent}));
+    if(accepted.length === 0){ alert('No tracks selected. Use "Accept All Matches" or click Accept per track.'); return; }
     log('Creating YouTube playlist...');
     const ytp = await createYouTubePlaylist('Imported from Spotify');
     if(!ytp){ log('Failed to create YouTube playlist'); return; }
-    const pid = ytp.id; log('Created playlist: ' + pid);
+    const pid = ytp.id; log('Created playlist:', pid);
     updateProgress(0);
     let done = 0;
     for(const item of accepted){
@@ -463,60 +482,18 @@ async function convertFlow(){
       const added = await addVideoToPlaylist(pid, item.videoId);
       if(added) log('Added'); else log('Failed to add');
       done++; updateProgress(done/accepted.length);
-      await new Promise(r=>setTimeout(r, 250));
+      await new Promise(r=>setTimeout(r, 300)); // small delay to be polite
     }
     log('All done. View playlist: https://www.youtube.com/playlist?list=' + pid);
     window.open('https://www.youtube.com/playlist?list=' + pid, '_blank');
   };
 
-  // refine search per track (already provided by clicking candidate images or use prompt)
-  document.querySelectorAll('.btn-refine').forEach(btn=>{
-    btn.onclick = async (e)=>{
-      const li = e.target.closest('.track');
-      const i = parseInt(li.dataset.index,10);
-      const newQuery = prompt('Refine search query', `${tracks[i].artists} - ${tracks[i].name}`);
-      if(!newQuery) return;
-      log('Refined search for ' + newQuery);
-      const candidates = await searchYouTubeCandidates(getKV('google_access_token'), newQuery, 3);
-      // render candidates just like parallelSearch would
-      const container = document.getElementById(`results-${i}`);
-      container.innerHTML = '';
-      candidates.forEach(c=>{
-        const div = document.createElement('div');
-        div.className='candidate';
-        div.dataset.videoId = c.videoId;
-        div.innerHTML = `<img src="${c.thumb||'https://via.placeholder.com/320x180'}"><div style="font-weight:600;margin-top:6px">${escapeHtml(c.title)}</div><div class="resMeta">${escapeHtml(c.channel)}</div>`;
-        div.onclick = ()=>{
-          Array.from(container.children).forEach(ch=>ch.classList.remove('selected'));
-          div.classList.add('selected');
-          li.dataset.videoId = c.videoId;
-        };
-        container.appendChild(div);
-      });
-    };
-  });
+}; // end convertFlow
 
-} // end convertFlow
-
-/* ------------- helpers ------------- */
-function parseSpotifyPlaylistId(input){
-  try{
-    if(!input) return null;
-    if(input.includes('open.spotify.com')){ const u = new URL(input); const parts = u.pathname.split('/'); return parts[parts.length-1].split('?')[0]; }
-    if(input.startsWith('spotify:playlist:')) return input.split(':')[2];
-    return input.trim();
-  }catch(e){ return null; }
-}
-
-/* ------------- Boot & bindings ------------- */
 document.getElementById('start').addEventListener('click', convertFlow);
-document.getElementById('logout').addEventListener('click', ()=>{ ['spotify_access_token','spotify_token_expiry','spotify_refresh_token','spotify_code_verifier','spotify_auth_state','google_access_token','google_token_expiry','google_oauth_state'].forEach(k=>localStorage.removeItem(k)); log('Cleared tokens.'); window.location.reload(); });
+document.getElementById('logout').addEventListener('click', ()=>{ ['spotify_access_token','spotify_token_expiry','spotify_refresh_token','spotify_code_verifier','spotify_auth_state','google_access_token','google_token_expiry','google_oauth_state'].forEach(k=>localStorage.removeItem(k)); log('Cleared tokens.'); });
 
-window.addEventListener("DOMContentLoaded", async ()=>{
-  // If user returned from callback (spotify code present), finish exchange automatically
-  const token = await handleSpotifyRedirect();
-  if(token){ log('Spotify authenticated automatically after redirect.'); }
-});
+window.addEventListener('load', async ()=>{ await handleSpotifyRedirect(); });
 </script>
 </body>
 </html>
