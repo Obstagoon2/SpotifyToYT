@@ -84,7 +84,10 @@ const SPOTIFY_CLIENT_ID = '54d05b42f861463bbde7c32323f79ed7';
 const GOOGLE_CLIENT_ID  = '886071212644-eusp493ftsk4id76kto65jmc7lfcgi0d.apps.googleusercontent.com';
 const REDIRECT_URI = window.location.origin + '/SpotifyToYT/callback.html';
 const SPOTIFY_SCOPES = ['playlist-read-private','playlist-read-collaborative'];
-const GOOGLE_SCOPES = ['https://www.googleapis.com/auth/youtube'];
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/youtube.readonly',
+  'https://www.googleapis.com/auth/youtube'
+];
 
 /* --- UI helpers --- */
 const logEl = document.getElementById('log');
