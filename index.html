@@ -85,9 +85,10 @@ const GOOGLE_CLIENT_ID  = '886071212644-eusp493ftsk4id76kto65jmc7lfcgi0d.apps.go
 const REDIRECT_URI = window.location.origin + '/SpotifyToYT/callback.html';
 const SPOTIFY_SCOPES = ['playlist-read-private','playlist-read-collaborative'];
 const GOOGLE_SCOPES = [
-  'https://www.googleapis.com/auth/youtube.readonly',
-  'https://www.googleapis.com/auth/youtube'
-];
+  "https://www.googleapis.com/auth/youtube", 
+  "https://www.googleapis.com/auth/youtube.force-ssl"
+].join(" ");
+
 
 /* --- UI helpers --- */
 const logEl = document.getElementById('log');
@@ -235,7 +236,13 @@ async function googleAuthPopup() {
       state,
       prompt: 'consent'
     };
-    const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + qs(params);
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?` +
+  `client_id=${GOOGLE_CLIENT_ID}` +
+  `&redirect_uri=${REDIRECT_URI}` +
+  `&response_type=token` +
+  `&scope=${encodeURIComponent(GOOGLE_SCOPES)}` +
+  `&include_granted_scopes=true` +
+  `&prompt=consent`;
     const w = window.open(url, 'google_auth', 'width=500,height=600');
 
     const interval = setInterval(() => {
