@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OAuth Callback</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 3rem;
+      background: #121212;
+      color: #1DB954; /* Spotify green */
+    }
+    .card {
+      background: #1e1e1e;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Redirecting…</h1>
+    <p>You can close this tab if it doesn’t redirect automatically.</p>
+  </div>
+
+  <script>
+    // Grab query/hash params from the redirect
+    const params = new URLSearchParams(window.location.hash.substring(1) || window.location.search.substring(1));
+    
+    // This will contain access_token for implicit flow or code for auth code flow
+    const data = {};
+    for (const [key, value] of params.entries()) {
+      data[key] = value;
+    }
+
+    // Store in localStorage for your main app to read
+    localStorage.setItem("oauth_data", JSON.stringify(data));
+
+    // Redirect back to your main app
+    window.location.href = window.location.origin + window.location.pathname.replace("callback.html", "index.html");
+  </script>
+</body>
+</html>

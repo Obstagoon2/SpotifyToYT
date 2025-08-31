@@ -10,7 +10,7 @@
   <main class="container">
     <header class="header">
       <div class="brand">
-        <img src="icons/spotify.svg" alt="Spotify" class="logo">
+        <img src="icons/spotify-music-2015-07-30.webp" alt="Spotify" class="logo">
         <h1>Spotify → YouTube Converter</h1>
       </div>
       <div class="sub">Preview matches and choose which videos to add to your YouTube playlist</div>
@@ -56,10 +56,33 @@
   </main>
 
 <script>
+  /* --- OAuth callback handling --- */
+(function(){
+  const raw = localStorage.getItem("oauth_data");
+  if(raw){
+    try {
+      const oauth = JSON.parse(raw);
+      console.log("OAuth data from callback:", oauth);
+
+      if(oauth.access_token && oauth.scope && oauth.scope.includes("youtube")) {
+        // Google implicit flow
+        saveKV("google_access_token", oauth.access_token);
+        const exp = Date.now() + (parseInt(oauth.expires_in||0)*1000);
+        saveKV("google_token_expiry", exp+"");
+      }
+      if(oauth.code && oauth.state) {
+        // Spotify PKCE code redirect — will be exchanged in handleSpotifyRedirect()
+        // Nothing to do here, just let handleSpotifyRedirect() pick it up.
+      }
+    } catch(e){ console.error("OAuth parse failed", e); }
+    localStorage.removeItem("oauth_data");
+  }
+})();
+
 /* --- CONFIG (replace client ids) --- */
-const SPOTIFY_CLIENT_ID = 'CLIENT_ID_SPOTIFY';
-const GOOGLE_CLIENT_ID  = 'CLIENT_ID_GOOGLE';
-const REDIRECT_URI = window.location.origin + window.location.pathname;
+const SPOTIFY_CLIENT_ID = '54d05b42f861463bbde7c32323f79ed7';
+const GOOGLE_CLIENT_ID  = '886071212644-eusp493ftsk4id76kto65jmc7lfcgi0d.apps.googleusercontent.com';
+const REDIRECT_URI = window.location.origin + '/SpotifyToYT/callback.html';
 const SPOTIFY_SCOPES = ['playlist-read-private','playlist-read-collaborative'];
 const GOOGLE_SCOPES = ['https://www.googleapis.com/auth/youtube'];
 
@@ -150,37 +173,21 @@ async function spotifyRefresh(){
   return null;
 }
 
-function googleSignIn(){
-  return new Promise((resolve,reject)=>{
-    const state = Math.random().toString(36).slice(2);
-    saveKV('google_oauth_state', state);
-    const params = {
-      client_id: GOOGLE_CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
-      response_type: 'token',
-      scope: GOOGLE_SCOPES.join(' '),
-      include_granted_scopes: 'true',
-      state,
-      prompt: 'consent'
-    };
-    const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + qs(params);
-    const w = window.open(url, 'google_oauth', 'width=540,height=720');
-    if(!w) return reject('Popup blocked');
-    const poll = setInterval(()=>{
-      try{
-        if(!w || w.closed){ clearInterval(poll); return reject('Popup closed'); }
-        if(w.location && w.location.origin === window.location.origin){
-          const hash = w.location.hash.substring(1);
-          const params = Object.fromEntries(new URLSearchParams(hash));
-          if(params.state !== getKV('google_oauth_state')){ clearInterval(poll); w.close(); reject('Google state mismatch'); return; }
-          clearInterval(poll); w.close();
-          if(params.access_token){ saveKV('google_access_token', params.access_token); saveKV('google_token_expiry',''+(Date.now() + (parseInt(params.expires_in||0)*1000))); resolve(params.access_token); }
-          else reject('No access token');
-        }
-      }catch(e){ /* cross origin while at google */ }
-    },500);
-  });
+function googleAuth() {
+  const state = Math.random().toString(36).slice(2);
+  saveKV('google_oauth_state', state);
+  const params = {
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: window.location.origin + '/SpotifyToYT/callback.html',
+    response_type: 'token',
+    scope: GOOGLE_SCOPES.join(' '),
+    include_granted_scopes: 'true',
+    state,
+    prompt: 'consent'
+  };
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + qs(params);
 }
+
 
 /* --- Spotify playlist fetching (pagination) --- */
 async function fetchSpotifyPlaylist(playlistId){
@@ -338,8 +345,10 @@ async function convertFlow(){
   // ensure google token via popup
   let gToken = getKV('google_access_token');
   if(!gToken){
-    try{ log('Opening Google sign-in popup...'); await googleSignIn(); log('Google signed in'); } catch(e){ log('Google sign-in failed:', e); return; }
-  }
+    log('Redirecting to Google sign-in...');
+    googleAuth();
+    return;
+}
 
   const tracks = await fetchSpotifyPlaylist(playlistId);
   if(!tracks || tracks.length===0){ log('No tracks fetched'); return; }
