@@ -105,8 +105,11 @@ async function sha256(plain) {
   const data = encoder.encode(plain);
   const digest = await crypto.subtle.digest('SHA-256', data);
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
+
 function qs(obj){ return Object.entries(obj).map(([k,v])=> encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&'); }
 function saveKV(k,v){ localStorage.setItem(k,v); }
 function getKV(k){ return localStorage.getItem(k); }
