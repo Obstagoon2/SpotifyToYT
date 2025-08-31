@@ -321,7 +321,7 @@ async function addVideoToPlaylist(playlistId, videoId){
   if(j.error){ log('Add video error', JSON.stringify(j)); return null; }
   return j;
 }
-async function searchYouTubeVideo(query, accessToken) {
+/*async function searchYouTubeVideo(query, accessToken) {
   const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&q=${encodeURIComponent(query)}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -336,7 +336,7 @@ async function searchYouTubeVideo(query, accessToken) {
   const data = await res.json();
   return data.items || [];
 }
-
+*/
 
 /* --- UI rendering for preview list --- */
 function createTrackItem(idx, track){
